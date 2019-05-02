@@ -1,0 +1,123 @@
+export DB2_USER=HADOOP
+export DB2_PSWD=had0012p
+export DB2_DRIVER=com.ibm.db2.jcc.DB2Driver
+export DB2_JDBC_DRIVER=jdbc:db2:
+export DB2_HADOOP_SERVER=trihada01
+export DB2_HADOOP_PORT=10010
+export DB2_DATABASE_NAME=KIHDB2A
+export DB2_DELIMITER_IN_TARGET='|
+
+
+export TD_USER=HADOOP_PRD_BCH
+export TD_PSWD=INITPSWD
+export TD_HADOOP_SERVER=edwprod1.intra.heenahc.com
+export TD_DATABASE_NAME=lci_work_tbls
+export TD_DELIMITER_IN_TARGET='|'
+export SESSIONS=10
+
+export ORACLE_USER=WMSREAD
+export ORACLE_PSWD=wmsread
+export ORACLE_DRIVER=oracle.jdbc.driver.OracleDriver
+export ORACLE_JDBC_DRIVER=jdbc:oracle:thin:@
+export ORACLE_HADOOP_SERVER=trihada01
+export ORACLE_HADOOP_PORT=10017
+export ORACLE_DATABASE_NAME=WMS
+export ORACLE_DELIMITER_IN_TARGET='^A'
+
+export MYSQL_USER=root
+export MYSQL_PSWD=root
+export MYSQL_DRIVER=com.mysql.jdbc.Driver
+export MYSQL_JDBC_DRIVER=jdbc:mysql:
+export MYSQL_HADOOP_SERVER=172.29.83.142
+export MYSQL_HADOOP_PORT=3306
+export MYSQL_DATABASE_NAME=metastore
+export MYSQL_DELIMITER_IN_TARGET='|'
+
+
+##sh SHC_WIFI_ACCESS_PT_AVAIL_sqoop.sh
+
+ 
+   sqoop import \
+    -D mapred.job.name="SQOOP_${TABLE_NAME}" \
+    --verbose \
+    --username ${DB_USER} \
+    --password ${DB_PSWD} \
+    --driver ${DB_DRIVER} \
+    --connect $JDBC_DRIVER//${HADOOP_SERVER}:${HADOOP_PORT}/${DATABASE_NAME} \
+    --query "${DB_QUERY}" \
+    --target-dir "${TARGET_DIR}" \
+    --fields-terminated-by "${FIELD_DELIMITER}" \
+    --outdir "${LOG_BASE_DIR}" \
+    ${APPEND_MODE} -m ${NUM_OF_MAPPERS}
+
+
+ sqoop import --verbose --username $DB2_USER_INV  --password $DB2_PASS_INV 
+ --driver com.ibm.db2.jcc.DB2Driver --connect $JDBC 
+ --query "select CORP_CD,DC_NO,DIV_NO,ITM_NO,SKU_CD,OWN_CD,RCD_STAT_CD,MAINT_LAST_DT,ITM_EVNT_CD,ITM_EVNT_STRT_DT,ITM_EVNT_END_DT,SUB_DIV_NO,SUB_ITM_NO,SUB_SKU_CD,RSN_SUBST_CD,DC_CHAIN_1_NO,DC_CHAIN_2_NO,DC_CHAIN_3_NO,DC_CHAIN_4_NO,ITM_CHAIN_FL,ITM_AVG_OH_QT,ITM_DAY_SH_QT,ITM_LAST_SH_DT,ITM_LAST_RCV_DT,ITM_ACTV_FL,ITM_AUT_FO_ALLC_FL,ITM_LD_TM_ALLC_QT,ITM_RSV_CD,ITM_BAL_UPD_TM,ITM_SO_RSV_QT,ITM_SO_BO_QT,ITM_PO_ON_ORD_QT,ITM_1_UNAVL_QT,ITM_2_UNAVL_QT,ITM_OH_QT,ITM_BU_COST_AM,ITM_OH_VAL_AM,ITM_FO_QT,ITM_IN_TRNST_QT,ITM_IN_TRNS_VAL_AM,ITM_PTD_LN_INVC_QT,ITM_PTD_SLS_QT,ITM_PTD_BO_SLS_QT,ITM_PTD_SLS_AM,ITM_PTD_CST_SLS_AM,RCPT_PTD_SLS_QT,RCPT_PTD_SLS_AM,RTN_PTD_SLS_QT,RTN_PTD_SLS_AM,ITM_NP_OH_QT,ITM_NP_BU_COST_AM,ITM_NP_OH_VAL_AM,ITM_NP_FO_QT,ITM_NP_TRNST_QT,ITM_NP_TRNS_VAL_AM,ITM_NP_LN_INVC_QT,ITM_NP_SLS_QT,ITM_NP_BO_SLS_AM,ITM_NP_SLS_AM,ITM_NP_SLS_COST_AM,RCPT_NP_SLS_QT,RCPT_NP_SLS_AM,RTN_NP_SLS_QT,RTN_NP_SLS_AM,ITM_YTD_LN_INVC_QT,ITM_YTD_SLS_QT,ITM_YTD_BO_SLS_QT,ITM_YTD_SLS_AM,ITM_YTD_SLS_CST_AM,ITM_LY_LN_INVC_QT,ITM_LY_SLS_QT,ITM_LY_BO_SLS_QT,ITM_LY_SLS_AM,ITM_LY_SLS_COST_AM,FLS_OH_QT,FLS_SO_RSV_QT,FLS_SO_BO_QT,FLS_FO_QT,FLS_PO_ON_ORD_QT,FLS_IN_TRNST_QT,FLS_1_UNAVL_QT,FLS_2_UNAVL_QT,HTS_OH_QT,HTS_SO_RSV_QT,HTS_SO_BO_QT,HTS_FO_QT,HTS_PO_ON_ORD_QT,HTS_IN_TRNST_QT,HTS_1_UNAVL_QT,HTS_2_UNAVL_QT,MAINT_USER_ID,MAINT_PGM_NM,MAINT_LAST_TS,ROW_CRT_TS,'$DB2_owner' from $DB where \$CONDITIONS WITH UR"
+ --target-dir $OutDir 
+ --append -m 1 
+ --fields-terminated-by '\t'
+ 
+ 
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA 
+ --driver com.ibm.db2.jcc.DB2Driver 
+ --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q 
+ --query 'Select SUB_CATG_ID, SUB_CATG_NBR, SUB_CATG_DESC, CATG_ID, CATG_NBR, CATG_DESC,  CATG_GRP_ID, CATG_GRP_NBR, CATG_GRP_DESC, DEPT_ID, DEPT_NBR, DEPT_DESC, DVSN_ID, DVSN_NBR, DVSN_DESC, BUS_UNIT_ID, BUS_UNIT_NBR, BUS_UNIT_DESC, BUS_ID, BUS_NBR, BUS_DESC,  CORP_ID, CORP_NBR, CORP_DESC from db2.hier_sub_catg  WHERE $CONDITIONS WITH UR'
+ --target-dir $OUTDIR --append -m 1 
+ --fields-terminated-by '\001' >> $LOGFILE 2>&1
+ 
+ 
+ sqoop import --verbose --username $DB2_USER_IMA 
+ --password $DB2_PASS_IMA  
+ --driver com.ibm.db2.jcc.DB2Driver
+ --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q 
+ --query "SELECT KSN_ID, EFF_TS, EXPIR_TS, DESC, RGSTR_DESC, MAX_ORD_PER_STR_QT, DC_BULK_AD_LEAD_TM, SEASON_CODE, SEAS_YR_NBR, ITEM_ID, PURCH_STAT_CD, KSN_CHK_DGT, SUB_SEAS_ID, PURCH_STAT_DT, SEM_DESC, KSN_ALT_ID, LE_SKU_NBR, LAST_CHG_USER_ID, OWNER_CD, GIFT_RGSTRY_CD, DOT_COM_CD, SIM_KSN_ID, SIM_KSN_PCT, DTCOM_ORDER_IND FROM DB2.KSN WHERE EFF_TS<=(TIMESTAMP_FORMAT('${CURRENT_TIMESTAMP}','YYYY-MM-DD HH24:MI:SS.FF')) AND EXPIR_TS>=(TIMESTAMP_FORMAT('${CURRENT_TIMESTAMP}','YYYY-MM-DD HH24:MI:SS.FF')) AND \$CONDITIONS with UR" 
+ --target-dir $OUTDIR --append -m 1  --fields-terminated-by '\001' >> $LOGFILE 2>&1
+
+ 
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query "select KSN_ID, EFF_TS, EXPIR_TS, SRS_DIV_NO, SRS_ITM_NO, SRS_SKU_NO, SKU_DESC, PRD_SZ_RATIO_CD, PRD_SZ_DS, PRD_SSZ_DS, PRD_COL_CD, PRD_COL_DS, LAST_CHG_USER_ID, CORE_CONV_DT, CB_SKU_ALT_ID from db2.core_bridge_sku WHERE EFF_TS<=(TIMESTAMP_FORMAT('${CURRENT_TIMESTAMP}','YYYY-MM-DD HH24:MI:SS.FF')) AND EXPIR_TS>=(TIMESTAMP_FORMAT('${CURRENT_TIMESTAMP}','YYYY-MM-DD HH24:MI:SS.FF')) AND \$CONDITIONS with UR"  --target-dir $OutDir --append -m 1  --fields-terminated-by '\001' >> $LOGFILE 2>&1
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query 'select ITEM_ID, DIV_LVL_ID, DIV_INSTN_ID, DIV_NBR,DEPT_LVL_ID, DEPT_INSTN_ID, DEPT_NBR, CATG_CLUS_LVL_ID, CATG_CLUS_INSTN_ID, CATG_CLUS_NBR, CATG_LVL_ID, CATG_INSTN_ID, CATG_NBR, SUB_CATG_LVL_ID, SUB_CATG_INSTN_ID, SUB_CATG_NBR, HIER_ITEM_EFF_DT, HIER_ITEM_EXP_DT, CORP_LVL_ID, CORP_INSTN_ID, CORP_NBR,  BUS_LVL_ID, BUS_INSTN_ID, BUS_NBR, BUS_UNIT_LVL_ID, BUS_UNIT_INSTN_ID, BUS_UNIT_NBR, RPT_DIV_INSTN_ID, RPT_DIV_NBR, RPT_DEPT_INSTN_ID, RPT_DEPT_NBR, RPT_CTG_GR_INST_ID, RPT_CATG_GRP_NBR, RPT_CATG_NBR, USER_ID, LAST_CHG_TS   from db2.hier_item  WHERE (date(last_chg_ts) = (current_date -1 day)) AND  $CONDITIONS WITH UR' --target-dir $TMPOUT --append -m 1 --fields-terminated-by '\001' >> $LOGFILE 2>&1
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query 'select KSN_ID, EFF_TS, EXPIR_TS, SRS_DIV_NO, SRS_ITM_NO, SRS_SKU_NO, SKU_DESC, PRD_SZ_RATIO_CD, PRD_SZ_DS, PRD_SSZ_DS, PRD_COL_CD, PRD_COL_DS, LAST_CHG_USER_ID, CORE_CONV_DT, CB_SKU_ALT_ID from db2.core_bridge_sku where date(expir_ts) <= current_date - 2 day  AND  $CONDITIONS WITH UR' --target-dir $OutDir --append -m 1 --fields-terminated-by '\001' >> $LogFile 2>&1
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query 'select ITEM_ID, EFF_TS, EXPIR_TS, ITEM_TYPE_CD, DESC, GROC_CROSSOVER_IND, ACCT_NBR, MIN_STR_SHELF_LIFE, MIN_DC_SHELF_LIFE, DFLT_SELL_PRC, DFLT_SELL_PRC_MULT, RE_ORD_AUTH_CD, NETWORK_DISTRB_CD, EAS_TAG_REQ_IND, DC_SECR_CD, STR_SECR_CD, STR_FRCST_CD, INCL_EVNT_IND, REFER_PKG_ID, CHKOUT_MERCH_IND, PURCH_STAT_CD, CAN_CARR_MDL_ID, DC_FRCST_CD, EXTRNL_CRTN_TYP_CD, ITEM_CHK_DGT, PURCH_STAT_DT, ITEM_ALT_ID, DD_IND, RSOS_IND, LAST_CHG_USER_ID, OWNER_CD, INSTL_IND, PROT_AGRMNT_IND, REPL_AGRMNT_IND, STAIN_AGRMNT_IND, BTTL_DEPST_IND, PROD_TAX_CD, MD_STYLE_REF_CD, SERV_IND, FUT_NTWRK_DSTRB_CD, FUT_NDC_EFF_DT, JIT_NTWRK_DSTRB_CD, PDM_NBR, IPLAN_ID, WRKSHT_URL, SER_NBR_REQ_IND, CUST_DRCT_LOCN_CD from db2.oi_item  WHERE date(expir_ts) <= (current_date - 2 day) AND  $CONDITIONS WITH UR' --target-dir $OutDir --append -m 1 --fields-terminated-by '\001' >> $LogFile 2>&1
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query 'select ITEM_ID, EFF_TS, EXPIR_TS, ITEM_TYPE_CD, DESC, GROC_CROSSOVER_IND, ACCT_NBR, MIN_STR_SHELF_LIFE, MIN_DC_SHELF_LIFE, DFLT_SELL_PRC, DFLT_SELL_PRC_MULT, RE_ORD_AUTH_CD, NETWORK_DISTRB_CD, EAS_TAG_REQ_IND, DC_SECR_CD, STR_SECR_CD, STR_FRCST_CD, INCL_EVNT_IND, REFER_PKG_ID, CHKOUT_MERCH_IND, PURCH_STAT_CD, CAN_CARR_MDL_ID, DC_FRCST_CD, EXTRNL_CRTN_TYP_CD, ITEM_CHK_DGT, PURCH_STAT_DT, ITEM_ALT_ID, DD_IND, RSOS_IND, LAST_CHG_USER_ID, OWNER_CD, INSTL_IND, PROT_AGRMNT_IND, REPL_AGRMNT_IND, STAIN_AGRMNT_IND, BTTL_DEPST_IND, PROD_TAX_CD, MD_STYLE_REF_CD, SERV_IND, FUT_NTWRK_DSTRB_CD, FUT_NDC_EFF_DT, JIT_NTWRK_DSTRB_CD, PDM_NBR, IPLAN_ID, WRKSHT_URL, SER_NBR_REQ_IND, CUST_DRCT_LOCN_CD, SMART_PLN_IND, IDRP_ORD_MTHD_CD, CMA_CLR_STYLE_ID, CMA_CLR_STYLE_DESC, SRS_NTWRK_DSTRB_CD, SRS_EMP_NDC, SRS_FUT_NDC, SRS_FUT_NDC_EFF_DT from db2.oi_item  WHERE (date(expir_ts) = (current_date -1 day)) AND  $CONDITIONS WITH UR' --target-dir $TMPOUT --append -m 1 --fields-terminated-by '\001' >> $LOGFILE 2>&1
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query 'select ITEM_ID, EFF_TS, EXPIR_TS, ITEM_TYPE_CD, DESC, GROC_CROSSOVER_IND, ACCT_NBR, MIN_STR_SHELF_LIFE, MIN_DC_SHELF_LIFE, DFLT_SELL_PRC, DFLT_SELL_PRC_MULT, RE_ORD_AUTH_CD, NETWORK_DISTRB_CD, EAS_TAG_REQ_IND, DC_SECR_CD, STR_SECR_CD, STR_FRCST_CD, INCL_EVNT_IND, REFER_PKG_ID, CHKOUT_MERCH_IND, PURCH_STAT_CD, CAN_CARR_MDL_ID, DC_FRCST_CD, EXTRNL_CRTN_TYP_CD, ITEM_CHK_DGT, PURCH_STAT_DT, ITEM_ALT_ID, DD_IND, RSOS_IND, LAST_CHG_USER_ID, OWNER_CD, INSTL_IND, PROT_AGRMNT_IND, REPL_AGRMNT_IND, STAIN_AGRMNT_IND, BTTL_DEPST_IND, PROD_TAX_CD, MD_STYLE_REF_CD, SERV_IND, FUT_NTWRK_DSTRB_CD, FUT_NDC_EFF_DT, JIT_NTWRK_DSTRB_CD, PDM_NBR, IPLAN_ID, WRKSHT_URL, SER_NBR_REQ_IND, CUST_DRCT_LOCN_CD from db2.oi_item  WHERE date(expir_ts) <= (current_date - 2 day) AND  $CONDITIONS WITH UR' --target-dir $OutDir --append -m 1 --fields-terminated-by '\001' >> $LogFile 2>&1
+sqoop import --verbose --username $DB2_USER_IMA  --password $DB2_PASS_IMA  --driver com.ibm.db2.jcc.DB2Driver --connect jdbc:db2://$HOSTNAME:10003/KIHDB2Q --query "select ITEM_ID, EFF_TS, EXPIR_TS, PRC_LINK_ID, PRC_LNK_MBR_ALT_ID from db2.prc_link_mbr  WHERE EFF_TS<=(TIMESTAMP_FORMAT('${CURRENT_TIMESTAMP}','YYYY-MM-DD HH24:MI:SS.FF')) AND EXPIR_TS>=(TIMESTAMP_FORMAT('${CURRENT_TIMESTAMP}','YYYY-MM-DD HH24:MI:SS.FF')) AND \$CONDITIONS with UR" --target-dir $OUTDIR --append -m 1  --fields-terminated-by '\001' >> $LOGFILE 2>&1
+sqoop import --verbose --username $username --password $password --driver $driver --connect $connection_string_kmart --query 'select EPS_UID, SELL_UNIT_ID,  PRD_TYP_CD, PRD_CD, NAME, DESC, STYLE_ID, SGN_STS_CD, SGN_TYP_CD, EFF_STA_DT, EFF_STA_TM, EFF_STP_DT, EFF_STP_TM, SGN_PRN_LVL_CD, SGN_SPCL_ACTN_CD, EVENT_ID, SGN_PRNT_MD, PARENT_ASC,  CRT_TS, CRT_USR_ID, REJCT_RES, NOTES, LIB_SGN_FL, USE_STYLESET, EXPAND_TO_FL, BATCHNUMBER, ACTION, LST_MTC_TS, LST_MTC_USR_ID from resadm.eps_sgn_hdr where current_date between eff_sta_dt and eff_stp_dt and action <> '$var' and $CONDITIONS with UR' --target-dir $hdploc/$sqptbl --fields-terminated-by $delimiter -m 1
+sqoop import --verbose --username $username --password $password --driver $driver --connect $connection_string_kmart --query 'select PRD_TYP_CD, PRD_CD, CHLD_PRD_TYP_CD, CHLD_PRD_CD, PRD_LVL_NO,  CHLD_PRD_LVL_NO, EFF_STA_DT,  EFF_END_DT, BATCHNUMBER, ACTION, LST_MTC_TS, LST_MTC_USR_ID from resadm.eps_prd_hier where current_date between eff_sta_dt and eff_end_dt and action <> '$var' and $CONDITIONS with UR' --target-dir  $hdploc/$sqptbl --fields-terminated-by $delimiter -m 1
+sqoop import --verbose --username $username --password $password --driver $driver --connect $connection_string_sears --query 'SELECT EPS_UID, STYLE_NAME, STYLE_TYP_CD, DESIGN_ID, DESIGN_ID2, LAYOUT_ID, LAYOUT_ID2, APPROVE_FLG, STR_PRNT_FLG, CRT_TS, CRT_USR_ID, BATCHNUMBER, ACTION, LST_MTC_TS, LST_MTC_USR_ID FROM RESADM.EPS_STYLES WHERE ACTION <> '$var' and $CONDITIONS with UR' --target-dir  $hdploc/$sqptbl --fields-terminated-by $delimiter -m 1
+
+SELECT SH_TO_UN_NO,DIV_NO,CAST(ITM_NO AS INTEGER),SKU_NO,ORD_NO,ORD_SEQ_NO,SH_QT,SH_NO,EST_ARV_DT,ORD_CRT_DT,SH_DT,ATN_CD,PSS_CD,UPD_ASN_TS,TCK_BCD_LBL_NO,RCP_CD FROM table WHERE ATN_CD NOT IN ('1','4','5','8') AND $CONDITIONS
+SELECT SH_TO_UN_NO,DIV_NO,CAST(ITM_NO AS INTEGER),SKU_NO,ORD_NO,ORD_SEQ_NO,SH_QT,SH_NO,EST_ARV_DT,ORD_CRT_DT,SH_DT,ATN_CD,PSS_CD,UPD_ASN_TS,TCK_BCD_LBL_NO,RCP_CD FROM table WHERE ATN_CD NOT IN ('1','4','5','8') AND CAR_CNTL_NO NOT LIKE 'H%' AND $CONDITIONS
+
+SELECT SH_TO_UN_NO,DIV_NO,CAST(ITM_NO AS INTEGER),SKU_NO,ORD_NO,ORD_SEQ_NO,SH_QT,ORI_SH_NO,EST_ARV_DT,ORD_CRT_DT,SH_DT,ATN_CD,PSS_CD,UPD_ASN_TS,PO_LN_NO FROM table WHERE (PSS_CD IN (' ','3') OR DATE(UPD_ASN_TS) = '0001-01-01')  AND $CONDITIONS
+
+SELECT inv.LOCN, inv.DIV,inv.ITEM, inv.SKU, inv.ONHAND FROM (SELECT PI.LOCN, PI.DIV,PI.ITEM, PI.SKU, PI.ONHAND FROM searsrti.PRODUCT_INVENTORY PI WHERE PI.ONHAND != 0 AND PI.LOCN > '0006051') inv LEFT OUTER JOIN searsrti.CONTROL_WITH cwth ON inv.DIV = cwth.OLD_DIV AND inv.ITEM = cwth.OLD_ITEM WHERE cwth.OLD_DIV IS NULL AND inv.DIV IS NOT NULL AND $CONDITIONS;
+SELECT inv.LOCN, inv.DIV,inv.ITEM, inv.SKU, inv.ONHAND FROM (SELECT PI.LOCN, PI.DIV,PI.ITEM, PI.SKU, PI.ONHAND FROM searsrti.PRODUCT_INVENTORY PI WHERE PI.ONHAND != 0 AND PI.LOCN > '0001086' AND PI.LOCN <= '0001167') inv LEFT OUTER JOIN searsrti.CONTROL_WITH cwth ON inv.DIV = cwth.OLD_DIV AND inv.ITEM = cwth.OLD_ITEM WHERE cwth.OLD_DIV IS NULL AND inv.DIV IS NOT NULL AND $CONDITIONS;
+
+SELECT oov.* FROM (select to_char((sysdate),'YYYY-mm-dd hh:mi:ss') as load_ts, OVERSEAS_DATE, IN_DECON_DATE, IN_DC_DATE, IN_STORE_DATE,AD_DATE, FINALIZED, ORIGINAL_IN_DC_DATE, ORIGINAL_IN_TF_DATE, EST_FRT_TYPE, I2K_CONTRACT, SEARS_DIV_PO, I2K_USER_KEY_REF, ALPHA_CODE, ORDER_START_DATE, ORDER_REF_DATE, I2K_VENDOR_NUMBER, SEARS_VENDOR_DUNS,VENDOR_PACK,SEARS_DIV, SEARS_ITEM, SEARS_SKU, I2K_DC_CODE, DC_CODE, FOB_POINT, FOB_PER_UNIT, ELC_PER_UNIT, I2K_FLOW_CODE, I2K_TRANS_MODE, IMA_ORDER_UOM, SEARS_PACK_TYPE, QTY_ON_ORDER, BALANCE_ON_ORDER, ORIGN_COUNTRY, EXPORT_COUNTRY, ITEM_ID, ITEM_TYPE, OWNER_CD, NETWORK_DISTRB_CD, DIVISION, FCR_DT, ETA_DT, CANCEL_FLAG from imcownr.SHC_I2K_IDRP_OPEN_ORDERS_VIEW) oov  LEFT OUTER JOIN (select i2k_contract, trim(user_key) as user_key, vend_pack_id, sum(alloc_qty)as partial_qty from imcownr.idrp_to_i2k_alloc_reply group by i2k_contract, trim (user_key) , vend_pack_id) ar ON oov.vendor_pack = ar.vend_pack_id AND oov.i2k_contract = ar.i2k_contract AND trim(oov.i2k_user_key_ref) = trim(ar.user_key) AND oov.qty_on_order = ar.partial_qty where ar.vend_pack_id is null AND $CONDITIONS
+SELECT areq.* FROM (select to_char((sysdate),'YYYY-mm-dd hh:mi:ss') as load_ts,i2k_contract, user_key, vend_pack_id, ksn_pack_id, ksn_id, sears_div, sears_item, sears_sku, opc, sears_vendor_duns, ship_date, in_dc_date, eta_date, flow_indicator, sears_pack_type, import_facility, asn_qty, booking_qty, alloc_system, transaction_date, imc_ref, last_update, last_user, item_id, item_type, owner_cd, alpha_cd, i2k_vendor_number from imcownr.SHC_I2K_TO_IDRP_ALLOC_REQUEST) areq LEFT OUTER JOIN (SELECT I2K_CONTRACT, TRIM(USER_KEY) AS USER_KEY, VEND_PACK_ID, SUM(ALLOC_QTY)AS PARTIAL_QTY FROM IMCOWNR.IDRP_TO_I2K_ALLOC_REPLY GROUP BY I2K_CONTRACT, TRIM (USER_KEY) , VEND_PACK_ID) ar ON areq.vend_pack_id = ar.vend_pack_id AND areq.i2k_contract = ar.i2k_contract AND trim(areq.user_key) = trim(ar.user_key) AND areq.asn_qty = ar.partial_qty WHERE ar.vend_pack_id is null AND $CONDITIONS
+SELECT UNIT_NO,DIV_NO,ORD_NO,ORD_SEQ_NO,ROW_CRT_DT,LST_MTC_TS FROM table WHERE ROW_CRT_DT = 'batchdate' AND TIME(LST_MTC_TS) > '06:00:00' AND CRG_SRC_CD NOT IN ('DOS','SRC','IST','SBD') AND $CONDITIONS
+REGISTER '/opt/cloudera/parcels/CDH/jars/piggybank.jar';
+
+
+hadoop fs -mkdir -p "/incoming/netwatch/availability/SHC_WIFI_ACCESS_PT_AVAIL_MINUT_TABLE_BACKUP/"
+hadoop fs -mv "/incoming/netwatch/availability/SHC_WIFI_ACCESS_PT_AVAIL_MINUT_TABLE_`yesterday +%Y%m%d`/"  "/incoming/netwatch/availability/SHC_WIFI_ACCESS_PT_AVAIL_MINUT_TABLE_BACKUP/"
+
+SQOOP_USER=hshaik0
+SQOOP_PSWD=salim123*
+SQOOP_DRIVER="com.teradata.jdbc.TeraDriver"
+hdp_server="trphada01" 
+teradata_schema="database=STR_ANLYTCS_MART_TBLS"
+HADOOP_SQOOP_OP="/incoming/netwatch/availability/SHC_WIFI_ACCESS_PT_AVAIL_MINUT_TABLE_`date +%Y%m%d`/"
+CONNECTION_STRING="$hdp_server/$teradata_schema"
+
+#CONNECTION_STRING="$HDP_SERVER/$TERADATA_SCHEMA"
+
+sqoop import --verbose --username $SQOOP_USER \
+             --password $SQOOP_PSWD --driver $SQOOP_DRIVER  \
+             --connect jdbc:teradata://$CONNECTION_STRING \
+             --query "SELECT * FROM STR_ANLYTCS_MART_TBLS.SHC_WIFI_ACC_PT_AVAIL_MINUT WHERE ACCESS_PT_STAT_DT > CURRENT_DATE-400 AND ACCESS_PT_ID IS NOT NULL AND ACCESS_PT_STAT_DT IS NOT NULL AND LOCN_NBR IS NOT NULL AND ACCESS_PT_MINUT_ID IS NOT NULL AND ACCESS_PT_UNAVL_IND IS NOT NULL AND DATASET_ID IS NOT NULL AND CREAT_TS IS NOT NULL AND \$CONDITIONS" \
+             --target-dir $HADOOP_SQOOP_OP \
+             -m 1   
+
+
