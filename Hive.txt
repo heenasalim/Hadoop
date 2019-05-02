@@ -1,0 +1,333 @@
+Managed_table
+
+
+create table heena_practice.managed_table
+  ( dept_id smallint,
+  dept_name varchar(20),
+  name varchar(20), 
+  address string ,
+  salary double)
+  row format delimited
+  fields terminated by '|';
+  
+  
+  create table heena_practice.temporary
+  ( dept_id smallint,
+  dept_name varchar(20),
+  name varchar(20), 
+  address string ,
+  salary double)
+  row format delimited
+  fields terminated by '|';
+  
+load data local  inpath "/home/auto/hshaik0/data/department.txt" into table heena_practice.temporary; 
+ 
+/user/hive/warehouse/heena_practice.db/managed_table
+
+Loading the data from local filesystem
+load data local  inpath "/home/auto/hshaik0/data/department.txt" into table heena_practice.managed_table;
+
+Loading the data from HDFS filesystem
+load data inpath "/user/hshaik0/department.txt" into table heena_practice.managed_table;
+
+data will be move from /user/hshaik0 to /user/hive/warehouse/heena_practice.db/managed_table
+hence data will not be available in actual data path
+
+select * from heena_practice.managed_table where dept_id=1;
+
+Inserting data into the table :-
+
+INSERT OVERWRITE TABLE heena_practice.managed_table select * from temporary;
+
+select * from heena_practice.managed_table;
+===============================================================================
+
+External Table
+
+create external table heena_practice.external_table(book_id int,book_name varchar(20),book_price int)
+row format delimited 
+fields terminated by "|"
+location "/user/hshaik0/information_library/";
+
+Loading the data from local filesystem
+load data local  inpath "/home/auto/hshaik0/data/books.txt" into table heena_practice.external_table;
+
+
+Loading the data from HDFS filesystem
+load data inpath "/user/hshaik0/books.txt" into table heena_practice.external_table;
+
+By loading data from hdfs the copy of the data move in the /user/hive/warehouse and you will not loose data
+
+  create table heena_practice.temporary1
+  ( dept_id smallint,
+  dept_name varchar(20),
+  salary double)
+  row format delimited
+  fields terminated by '|';
+  
+load data local inpath "/home/auto/hshaik0/data/books.txt" into table heena_practice.temporary1;
+
+Inserting data into the table :-
+INSERT OVERWRITE TABLE heena_practice.external_table select * from temporary1;
+
+select * from heena_practice.external_table
+
+==============================================================
+ALTER TABLE book_store RENAME to book_store1
+ALTER TABLE book_store ADD COLUMNS(new_price int);
+alter table book_store change new_price  updated_price double;
+alter table book_store change book_price book_price double;
+
+===============================================================================
+
+
+
+CLUSTERING 
+1>  create table heena_practice.temporary1
+  ( dept_id smallint,
+  dept_name varchar(20),
+  salary double)
+  row format delimited
+  fields terminated by '|';
+  
+2> load data local inpath "/home/auto/hshaik0/data/books.txt" into table heena_practice.temporary1;
+
+
+drop table heena_practice.user_inf;
+
+dfs -rm -r /user/hive/warehouse/heena_practice.db/user_inf/*;
+
+3> 
+CREATE EXTERNAL TABLE heena_practice.user_inf( user_id BIGINT,firstname STRING, salary DOUBLE) 
+CLUSTERED BY(user_id) INTO 9 BUCKETS
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|';
+--STORED AS TEXTFILE;
+
+The bucketed column name should be inside table definition
+
+load data local inpath "/home/auto/hshaik0/data/books.txt" into table heena_practice.user_inf;
+
+do not load data instead override from temporaray table here 
+
+4> 
+insert overwrite table heena_practice.user_inf select dept_id,dept_name,salary from heena_practice.temporary1;
+
+select * from  heena_practice.user_inf;
+
+dfs -ls /user/hive/warehouse/heena_practice.db/user_inf/;
+
+19/04/15 16:05:44 INFO gcs.GoogleHadoopFileSystemBase: GHFS version: 1.6.0-hadoop2
+-rwxrwxrwx   3 hshaik0 hdfs 40B 2019-04-15 16:05 /user/hive/warehouse/heena_practice.db/user_inf/books.txt
+
+
+
+===========================================================
+
+PARTITIONING:
+
+CREATE TABLE heena_practice.single_partitioned(id INT, name STRING, dept STRING, yoj DOUBLE)
+PARTITIONED BY (year STRING)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+			load data local inpath "/home/auto/hshaik0/data/single_partitioned.txt" into table heena_practice.single_partitioned;
+
+			here data will be go into partition directory hence we need to load partition data directory
+
+
+load data local inpath  "/home/auto/hshaik0/data/books.txt" overwrite into table heena_practice.single_partitioned
+partition (year='2008');
+
+			Loading data to table heena_practice.single_partitioned partition (year=180706)
+			Partition heena_practice.single_partitioned{year=180706} stats: [numFiles=2, numRows=0, totalSize=80, rawDataSize=0]
+			OK
+			
+			
+select * from heena_practice.single_partitioned;
+
+Partition directory
+19/04/15 15:54:36 INFO gcs.GoogleHadoopFileSystemBase: GHFS version: 1.6.0-hadoop2
+drwxrwxrwx   - hshaik0 hdfs 0B 2019-04-15 15:52 /user/hive/warehouse/heena_practice.db/single_partitioned/year=2008/books.txt
+-bash-4.1$
+
+
+
+==============================================================================================================
+DYNAMIC PARTITIONING	
+set hive.exec.dynamic.partition=true;
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.mapred.mode=nonstrict;
+
+-- Set the maximum number of reducers to the same number of buckets specified
+-- in the table metadata (i.e. 31). See below create MASTER table with buckets
+set map.reduce.tasks=31;
+
+set hive.enforce.bucketing=true;
+set hive.exec.dynamic.partition.mode=nonstrict;
+
+drop table heena_practice.election;
+create external table heena_practice.election(
+id Int,
+name String,
+address String,
+card_no Int,
+country String,
+state String
+)
+row format delimited
+fields terminated by '|'
+location '/user/hshaik0/election/';
+
+
+load data local inpath '/home/auto/hshaik0/data/election.txt' overwrite into table heena_practice.election;
+dfs -rm /user/hshaik0/voters_table
+create external table heena_practice.dynamic_partitioned_election
+(
+id Int,
+name String,
+address String,
+card_no Int)
+partitioned by(country String,state String)
+clustered by (card_no) into 4 buckets
+row format delimited
+location '/user/hshaik0/voters_table';
+insert overwrite table heena_practice.dynamic_partitioned_election partition(state,city) select * from heena_practice.election;
+
+
+select * from heena_practice.dynamic_partitioned_election;
+
+
+-rw-r--r--   3 hshaik0 hshaik0 2B 2019-04-19 11:18 /user/hshaik0/voters_table/.hive-staging_hive_2019-04-19_11-18-10_233_159047044785738848-1/-ext-10001/tmpstats-2
+-rwxrwxrwx   3 hshaik0 hshaik0 21B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Austrelia/city=Victoria/000000_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Austrelia/city=Victoria/000001_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Austrelia/city=Victoria/000002_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Austrelia/city=Victoria/000003_0
+-rwxrwxrwx   3 hshaik0 hshaik0 24B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Canada/city=Ontario/000000_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Canada/city=Ontario/000001_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Canada/city=Ontario/000002_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=Canada/city=Ontario/000003_0
+-rwxrwxrwx   3 hshaik0 hshaik0 22B 2019-04-19 11:18 /user/hshaik0/voters_table/state=China/city=Henan/000000_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=China/city=Henan/000001_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=China/city=Henan/000002_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=China/city=Henan/000003_0
+-rwxrwxrwx   3 hshaik0 hshaik0 43B 2019-04-19 11:18 /user/hshaik0/voters_table/state=India/city=Maharashtra/000000_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=India/city=Maharashtra/000001_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=India/city=Maharashtra/000002_0
+-rwxrwxrwx   3 hshaik0 hshaik0 0B 2019-04-19 11:18 /user/hshaik0/voters_table/state=India/city=Maharashtra/000003_0
+
+============================================================================================
+
+SIMPLE PARTITIONING AND CLUSTERING or STATIC PARTITIONING
+
+1:
+
+create external table heena_practice.static_partitioned_election
+(
+id Int,
+name String,
+address String,
+card_no Int,
+country String,
+state String)
+partitioned by(division_no String,maths_id String)
+clustered by (card_no) into 4 buckets
+row format delimited
+location '/user/hshaik0/voters_table';   -- hive-warehouse
+
+drop table heena_practice.election;
+create external table heena_practice.election(
+id Int,
+name String,
+address String,
+card_no Int,
+country String,
+state String
+)
+row format delimited
+fields terminated by '|'
+location '/user/hshaik0/election/';
+
+insert overwrite table heena_practice.static_partitioned_election partition(division_no = '1' ,maths_id  = '1000') select * from heena_practice.election where country = 'India';
+insert overwrite table heena_practice.static_partitioned_election partition(division_no = '2' ,maths_id  = '2000') select * from heena_practice.election;
+insert overwrite table heena_practice.static_partitioned_election partition(division_no = '1' ,maths_id  = '3000') select * from heena_practice.election;
+insert overwrite table heena_practice.static_partitioned_election partition(division_no = '4' ,maths_id  = '1000') select * from heena_practice.election;
+insert overwrite table heena_practice.static_partitioned_election partition(division_no = '9' ,maths_id  = '2000') select * from heena_practice.election;
+insert overwrite table heena_practice.static_partitioned_election partition(division_no = '2' ,maths_id  = '3000') select * from heena_practice.election;
+
+dfs -ls /user/hshaik0/voters_table/*
+
+Found 2 items
+drwxrwxrwx   - hshaik0 hshaik0          0 2019-04-20 12:47 /user/hshaik0/voters_table/division_no=1/maths_id=1000
+drwxrwxrwx   - hshaik0 hshaik0          0 2019-04-20 12:48 /user/hshaik0/voters_table/division_no=1/maths_id=3000
+Found 2 items
+drwxrwxrwx   - hshaik0 hshaik0          0 2019-04-20 12:48 /user/hshaik0/voters_table/division_no=2/maths_id=2000
+drwxrwxrwx   - hshaik0 hshaik0          0 2019-04-20 12:50 /user/hshaik0/voters_table/division_no=2/maths_id=3000
+Found 1 items
+drwxrwxrwx   - hshaik0 hshaik0          0 2019-04-20 12:48 /user/hshaik0/voters_table/division_no=4/maths_id=1000
+Found 1 items
+drwxrwxrwx   - hshaik0 hshaik0          0 2019-04-20 13:02 /user/hshaik0/voters_table/division_no=9/maths_id=2000
+
+Heena won !!
+
+Hive
+
+"insert overwrite table gold__sales_sears_pos_tran partition (transaction_year_nbr = '$PROCESS_YEAR') select * from work__sales_sears_pos_tran"
+alter table $GOLD_TABLE drop partition (data_center = '$DATA_CENTER');
+alter table gold__marketing_price_sears add partition (price_status='current') location '/gold/marketing/price/sears/price_status=current/';
+"alter table gold__sales_sears_pos_cancel_original_sale add if not exists partition (transaction_year_nbr=$PROCESS_YEAR);"
+"alter table gold__sales_sears_pos_markdown add if not exists partition (transaction_year_nbr=$PROCESS_YEAR);"
+
+
+hive -e "insert overwrite table gold__sales_sears_pos_tran_detail partition (transaction_year_nbr = '$PROCESS_YEAR') select * from work__sales_sears_pos_tran_detail"
+hive -e "insert overwrite table gold__sales_sears_pos_tran partition (transaction_year_nbr = '$PROCESS_YEAR') select * from work__sales_sears_pos_tran"
+hive -e "insert overwrite table gold__sales_sears_pos_payment partition (transaction_year_nbr = '$PROCESS_YEAR') select * from work__sales_sears_pos_payment"
+hive -e "alter table gold__sales_sears_pos_tran add if not exists partition (transaction_year_nbr=$PROCESS_YEAR);"
+hive -e "alter table gold__sales_sears_pos_tran_detail add if not exists partition (transaction_year_nbr=$PROCESS_YEAR);"
+hive -e "alter table gold__sales_sears_pos_payment add if not exists partition (transaction_year_nbr=$PROCESS_YEAR);"
+
+alter table gold__marketing_price_sears add partition (price_status='current') location '/gold/marketing/price/sears/price_status=current/';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2005') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2005';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2006') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2006';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2007') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2007';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2008') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2008';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2010') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2010';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2011') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2011';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2012') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2012';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2005') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2005';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2006') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2006';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2007') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2007';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2008') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2008';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2010') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2010';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2011') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2011';
+alter table gold__sales_sears_pos_tax_exempt add partition (transaction_year_nbr='2012') location '/gold/transaction/pos/sears/tax_aud_s5_exempt/transaction_year_nbr=2012';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='2013') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=2013';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='2003') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=2003';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='2009') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=2009';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='1995') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=1995';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='1996') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=1996';
+hive -e "insert overwrite table gold__sales_sears_pos_markdown partition (transaction_year_nbr = '$PROCESS_YEAR') select * from work__sales_sears_pos_markdown"
+hive -e "alter table $GOLD_TABLE drop partition (data_center = '$DATA_CENTER');" | tee -a $LOG_FILE
+Alter table to drop partition data_center=$DATA_CENTER ran successfully"
+Alter table to drop partition data_center=$DATA_CENTER in error"
+hive -e "insert overwrite table $GOLD_TABLE partition (data_center = '$DATA_CENTER') select to_date(from_unixtime(unix_timestamp())) load_dt,
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2013') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2013';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2003') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2003';
+alter table gold__sales_sears_pos_tax_delivery add partition (transaction_year_nbr='2009') location '/gold/transaction/pos/sears/tax_aud_s5_delivery/transaction_year_nbr=2009';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='2013') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=2013';alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='2003') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=2003';
+alter table gold__sales_sears_pos_tax_general add partition (transaction_year_nbr='2009') location '/gold/transaction/pos/sears/tax_aud_s5_general/transaction_year_nbr=2009';
+
+hive  -hiveconf CURRENT_DATE=`date +%Y%m%d` -hiveconf AVAIL_TARGET_TABLE=$AVAIL_TARGET_TABLE -hiveconf AVAIL_STAGING_INPUT_TABLE=$AVAIL_STAGING_INPUT_TABLE -hiveconf REF_SHC_LOCATION_INPUT_TABLE=$REF_SHC_LOCATION_INPUT_TABLE -f  SHC_WIFI_ACCESS_PT_AVAIL_hive.hql >>  SHC_WIFI_ACCESS_PT_AVAIL.log  2>&1
+
+
+
+set hive.execution.engine=tez;
+
+hive  -hiveconf CURRENT_DATE=20170413 -hiveconf AVAIL_TARGET_TABLE=$AVAIL_TARGET_TABLE -hiveconf AVAIL_STAGING_INPUT_TABLE=$AVAIL_STAGING_INPUT_TABLE -hiveconf REF_SHC_LOCATION_INPUT_TABLE=$REF_SHC_LOCATION_INPUT_TABLE -f  SHC_WIFI_ACCESS_PT_AVAIL_hive.hql >>  SHC_WIFI_ACCESS_PT_AVAIL_CURRENT_DATE.log  2>&1
+
+
+
+hive  -hiveconf CURRENT_DATE=`date +%Y%m%d` -hiveconf AVAIL_MINUT_TARGET_TABLE=$AVAIL_MINUT_TARGET_TABLE -hiveconf AVAIL_STAGING_INPUT_TABLE=$AVAIL_STAGING_INPUT_TABLE -hiveconf LU_DEJ_MINUT_ID_TABLE=$LU_DEJ_MINUT_ID_TABLE  -f SHC_WIFI_ACC_PT_AVAIL_MINUT_hive.hql >> ./STR_ANLYTCS_MART_TBLS.SHC_WIFI_ACC_PT_AVAIL_MINUT.log  2>&1
+=================================================================================================================================
+
