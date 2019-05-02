@@ -1,0 +1,506 @@
+
+
+--register the jar containing all PIG UDFs
+REGISTER $UDF_JAR;
+
+--trim spaces around string
+DEFINE TRIM_STRING $TRIM_STRING ;
+
+--trim leading zeros
+DEFINE TRIM_INTEGER $TRIM_INTEGER ;
+
+--trim leading and trailing zeros
+DEFINE TRIM_DECIMAL $TRIM_DECIMAL ;
+
+
+
+formatted_data =
+    FOREACH existing_data
+    GENERATE
+        TRIM_STRING(locn),
+                      TRIM_STRING(div),
+                      TRIM_STRING(item),
+                      TRIM_STRING(sku);
+
+
+
+define RemoveNull com.sears.hadoop.pig.piggybank.udf.RemoveNull();
+define PadZerosLeft com.sears.hadoop.pig.piggybank.udf.PadZerosLeft();
+
+%declare load_ts `date +"%Y-%m-%d %H:%M:%S"`
+
+set default_parallel 5
+
+rmf $p_gold_core_bridge_cod;
+
+core_bridge_cod = LOAD '$p_core_bridge_cod' USING PigStorage('$DELIM') AS $s_core_bridge_cod;
+ogp_typ_cd = LOAD '$p_ogp_typ_cd' USING PigStorage('$DELIM') AS $s_ogp_typ_cd;
+
+join1 = JOIN core_bridge_cod BY ogp_typ_code LEFT, ogp_typ_cd BY ogp_typ_code USING 'skewed';
+
+gold__core_bridge_cod = FOREACH join1 GENERATE
+  '$load_ts' as load_ts,
+  PadZerosLeft(ToString(core_bridge_cod::srs_div_no),3) as srs_div_no,
+--RemoveNull(ToString(core_bridge_cod::srs_div_no)) as srs_div_no,
+  RemoveNull(ToString(core_bridge_cod::srs_itm_no)) as srs_itm_no,
+  RemoveNull(ToString(core_bridge_cod::ogp_typ_code)) as ogp_typ_code,
+  RemoveNull(ToString(ogp_typ_cd::ogp_typ_description)) as ogp_typ_description,
+  RemoveNull(ToString(core_bridge_cod::eff_ts)) as eff_ts,
+  RemoveNull(ToString(core_bridge_cod::expir_ts)) as expir_ts,
+  RemoveNull(ToString(core_bridge_cod::last_chg_user_id)) as last_chg_user_id,
+  RemoveNull(ToString(core_bridge_cod::cb_cod_alt_id)) as cb_cod_alt_id;
+
+STORE gold__core_bridge_cod INTO '$p_gold_core_bridge_cod' USING PigStorage('$DELIM');
+~
+~
+~
+register '/appl/hdnet/netwatch/lib/bad_data_finder.jar';
+
+kmart_agreeement_input_csv_file = LOAD '$input_path_monthly' USING org.apache.pig.piggybank.storage.CSVExcelStorage() AS (Kmart_Week:chararray, CreatedDateUtc:chararray, Kmart_Store:chararray, ClientIp:chararray, Category:chararray, UserAgent:chararray, Type:chararray);
+
+formatted_output = FOREACH skipheader_input_band_file GENERATE '$load_ts' AS LOAD_TS,SUBSTRING(date,0,4) AS YEAR,SUBSTRING(date,5,7) AS MONTH,SUBSTRING(date,8,10) AS DATE_Parsed,date,folder_id,building_name,floor_name,band,type,non_n_bytes,n_bytes,device_count;
+
+
+A = LOAD '$ip_hdfs_path' USING PigStorage('\\u0001') AS $IP_SCHEMA;
+
+SPLIT A INTO GUD_RECS IF (CONCAT(CONCAT(request_year,request_month),request_day) >= (chararray)$END_DATE AND
+                        CONCAT(CONCAT(request_year,request_month),request_day) < (chararray)$EXECUTION_DATE),
+         BAD_RECS IF CONCAT(CONCAT(request_year,request_month),request_day) < (chararray)$END_DATE ;
+
+B = FOREACH GUD_RECS GENERATE $OP_SCHE
+
+guest_hits = LOAD  '$INPUT1' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','NO_MULTILINE','UNIX','SKIP_INPUT_HEADER') AS (location: chararray, timestamp_dt: chararray, device_id:  chararray, service: chararray, hostname: chararray, url: chararray, dst: chararray, dst_port: int, rcvd: int, sent: int);
+
+
+req_guest_hits = FOREACH guest_hits GENERATE timestamp_dt, location,SUBSTRING(timestamp_dt,0,4) AS year, SUBSTRING(timestamp_dt,5,7) AS month, SUBSTRING(timestamp_dt,8,10) AS date, SUBSTRING(timestamp_dt,11,19) AS time, device_id, service, hostname, url, (url matches '.*home\\?instore=true.*' ? UPPER(hostname) : hostname) AS url_chk_str:chararray,  dst, dst_port, rcvd, sent;
+
+
+/*********** Note:-  We have used harcoded values(of cache file) for matching it with the pattern of traffic guest file since we dont have any common key in it . So, in case if traffic cache file gets changed then we may ned dto change the below part of the code and accordingly modify it. *********************/
+
+mtch_req_guest_hits = FOREACH req_guest_hits GENERATE '$timestamp', year, month, date, location, timestamp_dt,  device_id, service, hostname,url_chk_str,
+(url_chk_str matches '.*fbcdn.*' ? 'facebook' :
+(url_chk_str matches '.*netflix.*' ? 'netflix':
+(url_chk_str matches '.*ebay.*' ? 'ebay' :
+(url_chk_str matches '.*amazonaws.*' ? 'amazonaws':
+(url_chk_str matches '.*amazon.*' ? 'amazon' :
+(url_chk_str matches '.*disney.*' ? 'disney' :
+(url_chk_str matches '.*dunkerton.*' ? 'dunkerton' :
+(url_chk_str matches '.*walmart.*' ? 'walmart' :
+(url_chk_str matches '.*kohl.*' ? 'kohl\'s' :
+(url_chk_str matches '.*bestbuy.*' ? 'bestbuy' :
+(url_chk_str matches '.*homedepot.*' ? 'homedepot' :
+(url_chk_str matches '.*shopyourway.*' ? 'shopyourway' :
+(url_chk_str matches '.*jcpenny.*' ? 'jcpenny' :
+(url_chk_str matches '.*target.*' ? 'Target' :
+(url_chk_str matches '.*88sears.*' ? '88Sears' :
+(url_chk_str matches '.*macy.*' ? 'Macy\'s' :
+(url_chk_str matches '.*M.SEARS.COM.*' ? 'Sears mWeb' :
+(url_chk_str matches '.*M.KMART.COM.*' ? 'Kmart mWeb' :'1')))))))))))))))))) AS website_hit, url, dst, dst_port, rcvd, sent;
+
+/***************** Splitting the data on the basis of websitehit is 1 or is not equal to 1 *****************/
+
+SPLIT mtch_req_guest_hits INTO mtch_website_hits  IF (website_hit  == '1' ), mtch_not_website_hits  IF (website_hit != '1');
+
+/**************** Generating 1st part of the output file *******************************************/
+req_gen_guest_hits = FOREACH mtch_not_website_hits GENERATE '$timestamp',  year, month, date, location, timestamp_dt,  device_id, service, LOWER(hostname), website_hit, url, dst , dst_port, rcvd, sent;
+
+
+/*********************** Checking whether the data is of the ip address type or not. Discard all the records which doesnt have values of type ip address type **************/
+req_join_guest_cache_null  = FILTER mtch_website_hits BY (TRIM(url_chk_str) MATCHES '^([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}$)') OR (TRIM(url_chk_str) MATCHES '^([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}:[0-9]{1,2}$)');
+
+
+%declare LOAD_TS `date "+'%Y-%m-%d %H:%m:%S'"`
+
+--REGISTER  '/opt/cloudera/parcels/CDH-5.5.1-1.cdh5.5.1.p0.11/jars/piggybank.jar';
+--REGISTER $UDF_SCRIPT_DIR/piggybank.jar;
+REGISTER '/opt/cloudera/parcels/CDH/lib/pig/piggybank.jar';
+
+--LOADING CACHE FILE
+FILE1 = LOAD '$STATION_REF_FILE' USING PigStorage('|') AS (key:chararray, value:chararray);
+
+--LOADING STATION FILE
+FILE2 = LOAD '$STATION_INPUT_PATH' USING org.apache.pig.piggybank.storage.CSVExcelStorage() AS (client_mac:chararray,vendor:chararray,sensed_username:chararray,polled_username:chararray,sensed_ip:chararray,polled_ip:chararray,ap_name:chararray,controller_name:chararray,floor_name:chararray,building_name:chararray,ssid:chararray,vlan:chararray,supported_protocols:chararray,bytes_tx:chararray,bytes_rx:chararray,pkts_tx:chararray,pkts_rx:chararray,avg_tx_rate:chararray,avg_rx_rate:chararray,start_time:chararray,end_time:chararray,duration_mins:chararray,SanctionFlag:chararray);
+
+-REMOVING ALL EMPTY RECORDS
+SPLIT  FILTER_HEADER_FILE INTO NULL_ROWS IF (client_mac matches '') AND  ( vendor  matches '') AND (sensed_username matches '') AND (polled_username matches '') AND (sensed_ip   matches '') AND (polled_ip  matches '') AND ( ap_name  matches '') AND (controller_name matches '') AND (floor_name matches '')  AND  (building_name matches '') AND  (ssid  matches '') AND ( vlan  matches '') AND (supported_protocols  matches '') AND ( bytes_tx matches '')  AND ( pkts_tx    matches '') AND  ( pkts_rx     matches '') AND  ( avg_tx_rate  matches '') AND (avg_rx_rate matches '') AND (start_time matches '') AND  (end_time matches '') AND (duration_mins matches '') AND  (SanctionFlag matches '') , NOT_NULL_ROWS OTHERWISE;
+
+--GENERATING VENDOR_HIT COLUMN
+VENDOR_HIT =     FOREACH SEARS_STATION_ONGOING_FILE GENERATE
+                 LOAD_TS..SanctionFlag,
+                 (VENDOR_CHK_STR matches '.*(apple).*' ? 'apple' :
+                 (VENDOR_CHK_STR matches '.*(samsung).*' ? 'samsung' :
+                 (VENDOR_CHK_STR matches '.*(lg).*' ? 'lg' :
+                 (VENDOR_CHK_STR matches '.*(alps).*' ? 'alps' :
+                 (VENDOR_CHK_STR matches '.*(askey).*' ? 'askey' :
+                 (VENDOR_CHK_STR matches '.*(arima).*' ? 'arima' :
+                 (VENDOR_CHK_STR matches '.*(azurewave).*' ? 'azurewave' :
+                 (VENDOR_CHK_STR matches '.*(belkin).*' ? 'belkin':
+                 (VENDOR_CHK_STR matches '.*(asust).*' ? 'asustek':
+                 (VENDOR_CHK_STR matches '.*(cisco).*' ? 'cisco':
+                 (VENDOR_CHK_STR matches '.*(micro-star).*' ? 'MICRO-STAR':
+                 (VENDOR_CHK_STR matches '.*(motorola).*' ? 'Motorola':
+                 (VENDOR_CHK_STR matches '.*(nokia).*' ? 'Nokia':
+                 (VENDOR_CHK_STR matches '.*(hon hai).*' ? 'hon hai':
+                 (VENDOR_CHK_STR matches '.*(murata).*' ? 'murata' :
+                 (VENDOR_CHK_STR matches '.*(huawei).*' ? 'huawei' : VENDOR_CHK_STR))))))))))))))));
+-- load the ebcidic file using pig ebcidic function
+ebcidicData = LOAD '$FILE_INPUT' USING com.sears.hadoop.pig.piggybank.storage.ebcidic.EBCIDICStorage('$CPBK_PATH');
+
+
+-- store the ebcidic data into a file using PigStorage using ASCII format
+STORE ebcidicData INTO '$FILE_OUTPUT' USING com.sears.hadoop.pig.piggybank.storage.ebcidic.text.TextStorage('$CPBK_PATH', '$FIELD_DELIMITER', 'true','true');
+
+~
+
+SPLIT CGRP_DATA into A if (not IsEmpty(SMTH_DATA) AND not IsEmpty(DLT_DATA)),
+                     B if IsEmpty(SMTH_DATA),
+                     C if IsEmpty(DLT_DATA);
+
+A2 = foreach A generate FLATTEN(DLT_DATA);
+
+
+
+smith__idrp_vend_pack_dc_combined_data_fltr_time =
+      FILTER smith__join_smith
+      BY (TRIM(smith__idrp_ie_batchdate_data::processing_ts) >= TRIM(smith__idrp_vend_pack_dc_combined_data::effective_ts)
+      AND
+          TRIM(smith__idrp_ie_batchdate_data::processing_ts) <= TRIM(smith__idrp_vend_pack_dc_combined_data::expiration_ts));
+
+
+              (work__idrp_vp_dc_start::import_ind =='1' ? 'N':((smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd is not null or IsNull(TRIM(smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd),'') !='' ) AND(smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd =='5' OR
+                                                                 smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd =='6'   OR
+                                                                 smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd =='7'   OR
+                                                                 smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd =='8'   OR
+                                                                 smith__idrp_vend_pack_dc_combined_fltr::vendor_managed_inventory_cd =='9') ? 'N' :
+                                                               (smith__idrp_vend_pack_dc_combined_fltr::stock_ind=='N' AND ((smith__idrp_vend_pack_dc_combined_fltr::dc_handling_cd is not null or IsNull(smith__idrp_vend_pack_dc_combined_fltr::dc_handling_cd,'') !='') and smith__idrp_vend_pack_dc_combined_fltr::dc_handling_cd == 'CASE') ?'Y':'N'))) as dc_flowthru_ind;
+
+              (work__idrp_vp_dc_config_applied_flow_thru::vendor_package_flow_type_cd == 'JIT' ? 'JIT': ((work__idrp_vp_dc_config_applied_flow_thru::dc_flowthru_ind =='Y' AND smith__idrp_dc_location_current_data::enable_jif_dc_ind == 'N' )? 'FLT':
+                                                                                        ((work__idrp_vp_dc_config_applied_flow_thru::dc_flowthru_ind =='Y' AND smith__idrp_dc_location_current_data::enable_jif_dc_ind == 'Y') ? 'JIF':
+                                                                                        ((work__idrp_vp_dc_config_applied_flow_thru::dc_flowthru_ind =='N') ? 'STK' : '' )))) AS dc_configuration_cd,
+             work__idrp_vp_dc_config_applied_flow_thru::allocation_replenishment_cd AS allocation_replenishment_cd;
+
+
+															   ((import_ind=='1' AND location_id!='8277') ? '8277' : CONCAT((chararray)(int)TRIM(ship_duns_nbr),'_S')) AS source_location_id,
+              CONCAT(ship_duns_nbr,'_S') AS purchase_order_vendor_location_id,
+
+			                (IsNull(work__idrp_dummy_vend_whse_ref::vendor_nbr,'') != '' ? (chararray)(int)TRIM(work__idrp_dummy_vend_whse_ref::warehouse_nbr) :CONCAT((chararray)TRIM(work__join_gold_gen_cross_mdse_attr_cd_fltr::ship_duns_nbr),'_S')) AS source_location_id,
+                  (IsNull(work__idrp_dummy_vend_whse_ref::vendor_nbr,'') != '' ? '' : CONCAT((chararray)TRIM(work__join_gold_gen_cross_mdse_attr_cd_fltr::ship_duns_nbr),'_S')) AS  purchase_order_vendor_location_id,
+
+				  
+SPLIT work__join_gold_gen
+INTO work__join_gold_gen_cross_mdse_attr_cd_fltr
+     IF cross_merchandising_cd=='SK1400',
+     work__join_gold_gen_cross_mdse_attr_cd_nt_fltr
+     IF (cross_merchandising_cd!='SK1400' OR cross_merchandising_cd is null);
+
+
+JOIN work__join_gold_gen_cross_mdse_attr_cd_fltr BY (int)TRIM(order_duns_nbr) LEFT OUTER, work__idrp_dummy_vend_whse_ref BY (int)TRIM(vendor_nbr);
+
+              (IsNull(work__idrp_dummy_vend_whse_ref::vendor_nbr,'') != '' ? (chararray)(int)TRIM(work__idrp_dummy_vend_whse_ref::warehouse_nbr) :CONCAT((chararray)TRIM(work__join_gold_gen_cross_mdse_attr_cd_fltr::ship_duns_nbr),'_S')) AS source_location_id,
+                  (IsNull(work__idrp_dummy_vend_whse_ref::vendor_nbr,'') != '' ? '' : CONCAT((chararray)TRIM(work__join_gold_gen_cross_mdse_attr_cd_fltr::ship_duns_nbr),'_S')) AS  purchase_order_vendor_location_id,
+                      work__join_gold_gen_cross_mdse_attr_cd_fltr::store_source_package_qty AS store_source_package_qty,
+              order_duns_nbr AS order_duns_nbr,
+              dc_flowthru_ind AS dc_flowthru_ind,
+                          vendor_managed_inventory_cd AS vendor_managed_inventory_cd,
+                          dc_handling_cd as dc_handling_cd;
+
+   JOIN work__idrp_kmart_vendor_package_location_store_level_data BY ((int)TRIM(vendor_package_id),TRIM(source_location_id)) LEFT OUTER,
+          work__idrp_vp_dc_srcloc_applied BY ((int)TRIM(vendor_package_id),TRIM(location_id));
+
+
+             (inbound_order_uom_cd is not null ? (inbound_order_uom_cd=='LAYR' ? (chararray)((int)vendor_carton_qty * (int)carton_per_layer_qty) :
+                                                                                        (inbound_order_uom_cd=='PALL' ? (chararray)((int)vendor_carton_qty * (int)carton_per_layer_qty * (int)layer_per_pallet_qty)
+                                                                                         : vendor_carton_qty)) : vendor_carton_qty) AS source_package_qty;
+
+
+          ((source_package_qty is null or IsNull(source_package_qty,'') == '' or source_package_qty  == '0') ? store_source_package_qty : source_package_qty) AS source_package_qty;
+
+grouped_data =
+     GROUP work__idrp_kmart_vendor_package_location_store_level_fltr
+     BY (vendor_package_id,source_location_id);
+
+grouped_data_gen =
+     FOREACH grouped_data
+     GENERATE
+             group.vendor_package_id AS vendor_package_id,
+             group.source_location_id AS source_location_id,
+             COUNT(work__idrp_kmart_vendor_package_location_store_level_fltr.active_ind) AS eligible_store_record_count;
+
+
+grouped_data_gen_fltr =
+     FILTER grouped_data_gen
+     BY (int)eligible_store_record_count > 0;
+
+              ((shc_item_type_cd == 'EXAS') OR (smith__idrp_inbound_vendor_package_dc_driver_data::inbnd_item_id IS NULL OR smith__idrp_inbound_vendor_package_dc_driver_data::inbnd_item_id=='') ? 'N' : 'Y') AS replenishment_planning_ind;
+
+
+SPLIT work__idrp_kmart_vp_loc_dc_level_1 INTO
+work__idrp_kmart_vp_loc_dc_level IF
+      source_location_id=='8277',
+work__idrp_kmart_vp_loc_dc_level_not_8277 IF
+      source_location_id!='8277';
+
+smith__idrp_vend_pack_dc_combined_data_8277 =
+      FILTER smith__idrp_vend_pack_dc_combined_data BY location_nbr =='8277';
+
+work__idrp_import_direct_vpdc_join =    JOIN work__idrp_kmart_vp_loc_dc_level_dist by ((int)vendor_package_id), smith__idrp_vend_pack_dc_combined_data by ((int)vendor_package_id);
+                                                                           
+
+work__idrp_import_direct_vpdc_sort =    FOREACH work__idrp_import_direct_vpdc_grp
+                                                                                        {
+                                                                                sorted = ORDER work__idrp_import_direct_vpdc_gen BY vendor_package_id, ksn_pack_purchase_status_cd, location_nbr;
+                                                                            x = LIMIT sorted 1;
+                                                                                                GENERATE FLATTEN (x);
+                                                                                };
+
+
+  'N' AS active_ind,
+  '$CURRENT_DATE' AS active_ind_change_dt,
+   work__idrp_kmart_vp_loc_dc_level::allocation_replenishment_cd AS allocation_replenishment_cd,
+   (CONCAT(work__idrp_import_direct_vpdc_info::ship_duns_nbr,'_S')) AS purchase_order_vendor_location_id,
+    'N' AS replenishment_planning_ind,
+    work__idrp_kmart_vp_loc_dc_level::scan_based_trading_ind AS scan_based_trading_ind,
+    (CONCAT(work__idrp_import_direct_vpdc_info::ship_duns_nbr,'_S')) AS source_location_id,
+     (work__idrp_kmart_vp_loc_dc_level::vendor_carton_qty == '0' ? '1' : work__idrp_kmart_vp_loc_dc_level::vendor_carton_qty ) AS source_package_qty,
+																																			
+
+  work__join_smith_idrp_loc_join::allocation_replenishment_cd AS allocation_replenishment_cd,
+              (smith__idrp_vend_pack_dc_combined_data_8277_filter::ship_duns_nbr IS NULL OR IsNull(TRIM(smith__idrp_vend_pack_dc_combined_data_8277_filter::ship_duns_nbr),'') =='' ? '' : CONCAT((chararray)TRIM(smith__idrp_vend_pack_dc_combined_data_8277_filter::ship_duns_nbr), '_S')) AS purchase_order_vendor_location_id,
+              work__join_smith_idrp_loc_join::replenishment_planning_ind AS replenishment_planning_ind,
+              work__join_smith_idrp_loc_join::scan_based_trading_ind AS scan_based_trading_ind,
+              (smith__idrp_vend_pack_dc_combined_data_8277_filter::ship_duns_nbr IS NULL ? '' : CONCAT((chararray)TRIM(smith__idrp_vend_pack_dc_combined_data_8277_filter::ship_duns_nbr), '_S')) AS source_location_id,
+              (work__join_smith_idrp_loc_join::vendor_carton_qty == '0' ? '1' : work__join_smith_idrp_loc_join::vendor_carton_qty)  AS source_package_qty,
+              work__join_smith_idrp_loc_join::vendor_package_purchase_status_cd AS vendor_package_purchase_status_cd,
+              work__join_smith_idrp_loc_join::vendor_package_purchase_status_dt AS vendor_package_purchase_status_dt,
+=================================================================================================================================
+Optimization:-
+			  
+REGISTER $UDF_JAR;
+DEFINE AddDays com.searshc.supplychain.idrp.udf.AddOrRemoveDaysToDate();
+set default_parallel 300;
+--set io.sort.mb 50
+/*IPS-3325 :- Adding Compression Technique and adjusting the mappers*/
+set io.compression.codec.lzo.class com.hadoop.compression.lzo.LzoCodec
+set pig.tmpfilecompression true
+set pig.tmpfilecompression.codec lzo
+set mapred.child.java.opts -Xmx4096m
+set mapred.compress.map.output true
+set mapred.min.split.size 524288;
+/*IPS-3325 :- Removed following part as it is not required
+set pig.cachedbag.memusage 0.15
+set io.sort.factor 10
+set opt.multiquery false */
+SET mapred.max.split.size 134217728
+SET pig.maxCombinedSplitSize 4000000
+SET mapreduce.map.java.opts: -Xmx3072m
+SET mapreduce.reduce.java.opts: -Xmx6144m
+/*
+			  
+
+ replitems_rec_file =
+    FOREACH replitems_rec_file
+        GENERATE
+            (chararray)shc_item_id AS ITEM;
+
+MSTR_LOCN_filtered = FILTER smith__idrp_eligible_loc_data by (int)loc<=9999;
+
+SPLIT op1_req_mstr1 INTO
+        dept_match   IF (
+                (REV_DEPT == '57')
+               ),
+        dept_unmatch IF (
+                (REV_DEPT != '57')
+               );
+  ((IsNull(join3::join2::smith__idrp_vend_pack_combined_data::service_area_restriction_model_id,'') == '')? '0' : join3::join2::smith__idrp_vend_pack_combined_data::service_area_restriction_model_id) AS SARM_NBR,
+                                        ((SBT_ORD_PT::LAUNCH_ID is NULL)? '0' : SBT_ORD_PT::LAUNCH_ID) AS SBT_LAUNCH_ID,
+
+
+/*
+SPLIT mdl_op1 INTO
+                        fltr_needed IF (REV_STORE_1 != 7840),
+                        fltr_nt_needed IF (REV_STORE_1 == 7840 AND
+                                        ((KSN_DTCOM_ORDER_IND_1 == 'K') OR (KSN_DTCOM_ORDER_IND_1 == 'B')));
+*/
+
+
+SPLIT mdl_op1_kns_attr_join INTO
+  fltr_needed IF ( loc_fmt_typ_cd != 'KINT' AND loc_fmt_typ_cd != 'SINT'),
+  fltr_nt_needed_kmart IF ((loc_fmt_typ_cd == 'KINT') AND  ((smith__idrp_ksn_attribute_current::warehouse_sizing_attribute_cd == 'WG8801') OR (smith__idrp_ksn_attribute_current::warehouse_sizing_attribute_cd == 'WG8809'))),
+  fltr_nt_needed_sears IF  ((loc_fmt_typ_cd == 'SINT') AND  (smith__idrp_ksn_attribute_current::warehouse_sizing_attribute_cd == 'WG8801'));
+
+========================================================================================================================
+
+
+
+										
+
+a = load '/home/auto/hshaik0/simple1.txt' USING PigStorage(',') as (id:chararray,name:chararray,adress:chararray,local_id:chararray);
+b = load '/home/auto/hshaik0/simple2.txt' USING PigStorage(',') as (mobile:chararray,phone:chararray,device:chararray,permanent_id:chararray);
+
+d = JOIN a BY (id,name) left outer,b BY (mobile,phone);
+c = JOIN a BY (id,name,adress) ,b BY (mobile,phone,device);
+
+i = JOIN a BY (id,name,adress) right outer,b BY (mobile,phone,device);
+
+filter_data = filter d BY  b::mobile is null;
+
+filter_data_insert = filter i BY a::id is null;
+
+e = foreach filter_data generate a::id,a::name,a::adress,a::local_id;
+
+e_for_insert= foreach filter_data_insert generate b::mobile,b::phone,b::device,b::permanent_id;
+
+f  = foreach c
+{
+  a::id=a::id;
+  a::name=a::name;
+  a::adress=a::adress;
+  a::local_id=b::permanent_id;
+
+generate a::id,a::name,a::adress,a::local_id;
+};
+
+s = union f,e;
+
+final_data = union s,e_for_insert;
+
+
+
+
+n = filter final_data by  $1 is not null;
+
+DUMP n;
+
+/*
+
+
+g =  foreach d
+{
+    filter_data = filter d by b::mobile == 'null';
+      generate filter_data;
+};
+
+
+ah = foreach d
+{
+      generate a::id,a::name,a::adress,a::local_id;
+};
+
+DUMP d;
+k = JOIN a BY (id,name,adress) full outer,b BY (mobile,phone,device);
+c = JOIN a BY (id,name,adress) ,b BY (mobile,phone,device);
+
+
+*/
+
+
+SELECT SH_TO_UN_NO,DIV_NO,CAST(ITM_NO AS INTEGER),SKU_NO,ORD_NO,ORD_SEQ_NO,SH_QT,SH_NO,EST_ARV_DT,ORD_CRT_DT,SH_DT,ATN_CD,PSS_CD,UPD_ASN_TS,TCK_BCD_LBL_NO,RCP_CD FROM table WHERE ATN_CD NOT IN ('1','4','5','8') AND $CONDITIONS
+SELECT SH_TO_UN_NO,DIV_NO,CAST(ITM_NO AS INTEGER),SKU_NO,ORD_NO,ORD_SEQ_NO,SH_QT,SH_NO,EST_ARV_DT,ORD_CRT_DT,SH_DT,ATN_CD,PSS_CD,UPD_ASN_TS,TCK_BCD_LBL_NO,RCP_CD FROM table WHERE ATN_CD NOT IN ('1','4','5','8') AND CAR_CNTL_NO NOT LIKE 'H%' AND $CONDITIONS
+
+SELECT SH_TO_UN_NO,DIV_NO,CAST(ITM_NO AS INTEGER),SKU_NO,ORD_NO,ORD_SEQ_NO,SH_QT,ORI_SH_NO,EST_ARV_DT,ORD_CRT_DT,SH_DT,ATN_CD,PSS_CD,UPD_ASN_TS,PO_LN_NO FROM table WHERE (PSS_CD IN (' ','3') OR DATE(UPD_ASN_TS) = '0001-01-01')  AND $CONDITIONS
+
+SELECT inv.LOCN, inv.DIV,inv.ITEM, inv.SKU, inv.ONHAND FROM (SELECT PI.LOCN, PI.DIV,PI.ITEM, PI.SKU, PI.ONHAND FROM searsrti.PRODUCT_INVENTORY PI WHERE PI.ONHAND != 0 AND PI.LOCN > '0006051') inv LEFT OUTER JOIN searsrti.CONTROL_WITH cwth ON inv.DIV = cwth.OLD_DIV AND inv.ITEM = cwth.OLD_ITEM WHERE cwth.OLD_DIV IS NULL AND inv.DIV IS NOT NULL AND $CONDITIONS;
+SELECT inv.LOCN, inv.DIV,inv.ITEM, inv.SKU, inv.ONHAND FROM (SELECT PI.LOCN, PI.DIV,PI.ITEM, PI.SKU, PI.ONHAND FROM searsrti.PRODUCT_INVENTORY PI WHERE PI.ONHAND != 0 AND PI.LOCN > '0001086' AND PI.LOCN <= '0001167') inv LEFT OUTER JOIN searsrti.CONTROL_WITH cwth ON inv.DIV = cwth.OLD_DIV AND inv.ITEM = cwth.OLD_ITEM WHERE cwth.OLD_DIV IS NULL AND inv.DIV IS NOT NULL AND $CONDITIONS;
+
+SELECT oov.* FROM (select to_char((sysdate),'YYYY-mm-dd hh:mi:ss') as load_ts, OVERSEAS_DATE, IN_DECON_DATE, IN_DC_DATE, IN_STORE_DATE,AD_DATE, FINALIZED, ORIGINAL_IN_DC_DATE, ORIGINAL_IN_TF_DATE, EST_FRT_TYPE, I2K_CONTRACT, SEARS_DIV_PO, I2K_USER_KEY_REF, ALPHA_CODE, ORDER_START_DATE, ORDER_REF_DATE, I2K_VENDOR_NUMBER, SEARS_VENDOR_DUNS,VENDOR_PACK,SEARS_DIV, SEARS_ITEM, SEARS_SKU, I2K_DC_CODE, DC_CODE, FOB_POINT, FOB_PER_UNIT, ELC_PER_UNIT, I2K_FLOW_CODE, I2K_TRANS_MODE, IMA_ORDER_UOM, SEARS_PACK_TYPE, QTY_ON_ORDER, BALANCE_ON_ORDER, ORIGN_COUNTRY, EXPORT_COUNTRY, ITEM_ID, ITEM_TYPE, OWNER_CD, NETWORK_DISTRB_CD, DIVISION, FCR_DT, ETA_DT, CANCEL_FLAG from imcownr.SHC_I2K_IDRP_OPEN_ORDERS_VIEW) oov  LEFT OUTER JOIN (select i2k_contract, trim(user_key) as user_key, vend_pack_id, sum(alloc_qty)as partial_qty from imcownr.idrp_to_i2k_alloc_reply group by i2k_contract, trim (user_key) , vend_pack_id) ar ON oov.vendor_pack = ar.vend_pack_id AND oov.i2k_contract = ar.i2k_contract AND trim(oov.i2k_user_key_ref) = trim(ar.user_key) AND oov.qty_on_order = ar.partial_qty where ar.vend_pack_id is null AND $CONDITIONS
+SELECT areq.* FROM (select to_char((sysdate),'YYYY-mm-dd hh:mi:ss') as load_ts,i2k_contract, user_key, vend_pack_id, ksn_pack_id, ksn_id, sears_div, sears_item, sears_sku, opc, sears_vendor_duns, ship_date, in_dc_date, eta_date, flow_indicator, sears_pack_type, import_facility, asn_qty, booking_qty, alloc_system, transaction_date, imc_ref, last_update, last_user, item_id, item_type, owner_cd, alpha_cd, i2k_vendor_number from imcownr.SHC_I2K_TO_IDRP_ALLOC_REQUEST) areq LEFT OUTER JOIN (SELECT I2K_CONTRACT, TRIM(USER_KEY) AS USER_KEY, VEND_PACK_ID, SUM(ALLOC_QTY)AS PARTIAL_QTY FROM IMCOWNR.IDRP_TO_I2K_ALLOC_REPLY GROUP BY I2K_CONTRACT, TRIM (USER_KEY) , VEND_PACK_ID) ar ON areq.vend_pack_id = ar.vend_pack_id AND areq.i2k_contract = ar.i2k_contract AND trim(areq.user_key) = trim(ar.user_key) AND areq.asn_qty = ar.partial_qty WHERE ar.vend_pack_id is null AND $CONDITIONS
+SELECT UNIT_NO,DIV_NO,ORD_NO,ORD_SEQ_NO,ROW_CRT_DT,LST_MTC_TS FROM table WHERE ROW_CRT_DT = 'batchdate' AND TIME(LST_MTC_TS) > '06:00:00' AND CRG_SRC_CD NOT IN ('DOS','SRC','IST','SBD') AND $CONDITIONS
+REGISTER '/opt/cloudera/parcels/CDH/jars/piggybank.jar';
+
+FILE1 = LOAD '/incoming/netwatch/cache_file_station/' USING PigStorage('|') AS (key:chararray, value:chararray);
+
+FILE2 = LOAD '/incoming/netwatch/station/ongoing/$CURRENT_DATE/' USING org.apache.pig.piggybank.storage.CSVExcelStorage();
+
+FILTER_HEADER_FILE = FILTER FILE2 BY $1 !="client_mac" OR $1 !='';
+
+/*
+client_mac,vendor,sensed_username,polled_username,sensed_ip,polled_ip,ap_name,controller_name,floor_name,building_name,ssid,vlan,supported_protocols,bytes_tx,bytes_rx,pkts_tx,pkts_rx,avg_tx_rate,avg_rx_rate,start_time,end_time,duration_mins,SanctionFlag*/
+
+DEFINE EmptyBagToNullFields datafu.pig.util.Coalesce();
+define COALESCE datafu.pig.util.COALESCE();
+define Coalesce datafu.pig.util.Coalesce();
+
+%declare LOAD_TS `date "+'%Y-%m-%d %H:%m:%S'"`
+REGISTER  '/opt/cloudera/parcels/CDH-5.5.1-1.cdh5.5.1.p0.11/jars/piggybank.jar';
+
+FILE1 = LOAD '/incoming/netwatch/cache_file_station' USING PigStorage('|') AS (key:chararray, value:chararray);
+
+FILE2 = LOAD '/incoming/netwatch/station/ongoing/$CURRENT_DATE_value/' USING org.apache.pig.piggybank.storage.CSVExcelStorage() AS (client_mac:chararray,vendor:chararray,sensed_username:chararray,polled_username:chararray,sensed_ip:chararray,polled_ip:chararray,ap_name:chararray,controller_name:chararray,floor_name:chararray,building_name:chararray,ssid:chararray,vlan:chararray,supported_protocols:chararray,bytes_tx:chararray,bytes_rx:chararray,pkts_tx:chararray,pkts_rx:chararray,avg_tx_rate:chararray,avg_rx_rate:chararray,start_time:chararray,end_time:chararray,duration_mins:chararray,SanctionFlag:chararray);
+
+FILTER_HEADER_FILE = FILTER FILE2 BY client_mac != 'client_mac';
+
+RELATION2 = LOAD '/incoming/netwatch/cache_file_station/' USING PigStorage('|') AS (key:chararray, value:chararray);
+
+HASH_MAP = FOREACH FILE1 GENERATE TOMAP(key,value);
+
+TIMESTAMP_NOW = FOREACH FILTER_HEADER_FILE GENERATE STRSPLIT($20,' ',2) as timestamp;
+
+SPLITANTS = FOREACH TIMESTAMP_NOW GENERATE FLATTEN(TOBAG(timestamp));
+
+TIMESTAMP_FIRST_SPLIT =  FOREACH SPLITANTS GENERATE STRSPLIT($0,' ',2);
+
+SPLITANTS_OF_DATE = FOREACH TIMESTAMP_FIRST_SPLIT GENERATE FLATTEN(TOBAG($0));
+
+YEAR_MONTH_DATE =  FOREACH SPLITANTS_OF_DATE GENERATE STRSPLIT($0,'-',3);
+
+
+
+DUMP YEAR_MONTH_DATE;
+--YEAR_MONTH_DATE_DAY = FOREACH YEAR_MONTH_DATE GENERATE $0,$2,$3 AS YEAR,MONTH,DATE;
+
+--DATE_MONTH_YEAR =  FOREACH TIMESTAMP_SECOND_SPLIT GENERATE $1,$2,$3;
+/*
+REPLACE_BLANKS = FOREACH FILTER_HEADER_FILE  generate
+               ($0 == '' ? 'NULL' : $0 ) , 
+               ($1 == '' ? 'NULL' : $1 ), 
+               ($2 == '' ? 'NULL' : $2 ) ,
+               ($3 == '' ? 'NULL' : $3 ) , 
+               ($4 == '' ? 'NULL' : $4 ) , 
+               ($5 == '' ? 'NULL' : $5 ) , 
+               ($6 == '' ? 'NULL' : $6 ) , 
+               ($7 == '' ? 'NULL' : $7 ) , 
+               ($8 == '' ? 'NULL' : $8 ) , 
+               ($9 == '' ? 'NULL' : $9 ) , 
+               ($10 == '' ? 'NULL' : $10 ) , 
+               ($11 == '' ? 'NULL' : $11 ) , 
+               ($12 == '' ? 'NULL' : $12 ) , 
+               ($13 == '' ? 'NULL' : $13 ) , 
+               ($14 == '' ? 'NULL' : $14 ) , 
+               ($15 == '' ? 'NULL' : $15 ) , 
+               ($16 == '' ? 'NULL' : $16 ) , 
+               ($17 == '' ? 'NULL' : $17) , 
+               ($18 == '' ? 'NULL' : $18 ) , 
+               ($19 == '' ? 'NULL' : $19 ) ,
+               ($20 == '' ? 'NULL' : $20 ) ,
+               ($21 == '' ? 'NULL' : $21),
+               ($22 == '' ? 'NULL' : $22 ) ,
+               ($23 == '' ? 'NULL' : $23);
+
+
+VENDOR_CHK_STR_GENERATE = FOREACH REPLACE_BLANKS GENERATE LOWER($1) AS VENDOR_CHK_STR;
+
+INNER_JOIN = JOIN VENDOR_CHK_STR_GENERATE BY VENDOR_CHK_STR, FILE1 BY key;
+
+--DUMP INNER_JOIN;
+LEFT_JOIN =  JOIN VENDOR_CHK_STR_GENERATE BY VENDOR_CHK_STR LEFT OUTER , FILE1 BY key;
+
+NON_UPDATED_NULL = FILTER LEFT_JOIN BY $2 IS NULL;
+
+NON_UPDATED = FOREACH NON_UPDATED_NULL GENERATE $0;
+
+UPDATED = FOREACH INNER_JOIN GENERATE $2;
+
+VENDOR_HIT = UNION UPDATED,NON_UPDATED;
+/*
+FINAL_OUTPUT = COGROUP $LOAD_TS BY $0,YEAR_MONTH_DATE_DAY.YEAR BY $0,YEAR_MONTH_DATE_DAY.MONTH BY $0,YEAR_MONTH_DATE_DAY.DAY BY $0,REPLACE_BLANKS BY $0,VENDOR_HIT BY $0;
+
+FINAL_COLUMNS = FOREACH FINAL_OUTPUT GENERATE $LOAD_TS,YEAR_MONTH_DATE_DAY.YYEAR_MONTH_DATE_DAY.MONTH,FINAL_OUTPUT.YEAR_MONTH_DATE_DAY.DAY,FINAL_OUTPUT.REPLACE_BLANKS,FINAL_OUTPUT.VENDOR_HIT;
+
+
+DUMP FINAL_OUTPUT;
+DUMP FINAL_COLUMNS;
+--STORE FINAL_OUTPaUT INTO '/work/netwatch/temp_sears/VENDOR_STORE/' USING PigStorage('|');
+*DUMP YEAR_MONTH_DATE_DAY;
+
+
+
