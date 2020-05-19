@@ -1,0 +1,109 @@
+
+ <html>
+<head>
+<script language="javascript"  type="text/javascript">
+
+function final_schema()
+{
+	
+	var columnnames = document.getElementById("columnnames").value;
+	var datatype = document.getElementById("schema1").value;
+	var final_schema = columnnames + ':' + datatype;
+	document.getElementById("ta").value  += final_schema + ','
+
+	//textarea.value = textarea.value.replace(, "");
+	// document.getElementById("ta").value= toString().replace(', ',' ');
+    //document.write(heena);
+   
+	
+}
+function add(type)
+{
+		
+	   var element = document.createElement("input");
+	 
+	    //Assign different attributes to the element.
+	    element.setAttribute("type", type);
+	    element.setAttribute("value", type);
+	    element.setAttribute("name", type);
+	 	
+	    var foo = document.getElementById("ta");
+	    //       
+	    //Append the element in page (in span).
+	    foo.appendChild(element);
+	   
+	
+}
+function WriteToFile()
+{
+var fso= new ActiveXObject("Scripting.FileSystemObject");
+var s = fso.CreateTextFile("C:\\Users\\hshaik0\\Desktop\\heenashaikh1.txt", true);
+var alias =document.getElementById("h").value;
+var file_name =document.getElementById("text1").innerText;
+var f_schema = document.getElementById("ta").value;
+
+var delemiter =document.getElementById("id1").value;
+var ta1 = document.getElementById("ta").value.toString().replace(/,$/ ," ");
+s.WriteLine(alias + '=' + ' ' + 'LOAD' +  ' ' +  file_name + '  ' +  'USING' + ' ' +  'Pigstorage'  + '('  + delemiter + ')' + 'AS' + '(' + ta1 + ' )');
+
+s.Close();
+}
+</script>
+
+</head>
+
+<body>
+
+<form name="abc">
+Enter the name of alias:
+<input type='text' id="h" name="alias"/>
+<!-- <input type='text' id="b" name="alias1"/>
+
+<textarea name="text">FIFA </textarea> -->
+Enter the path of file to load:
+<textarea name="text1">heena </textarea>
+Choose the appropriate delemiter:
+
+<select name="id" id="id1">
+<option value="'|'"> | </option>
+<option value= "'*'"> * </option> 
+<option value="'/u0001'"> Cntrl-A </option>
+<option value="'\t'"> '\t' </option>
+<option value=" ">Space</option> 
+<option value="':'">: </option>
+<option value="'='">=</option>
+<option value="'+'">+</option>
+<option value="';'">;</option>
+<option value="','"> , </option>
+<option value="'#'"> #</option>
+<option value="'!'">! </option>
+<option value="'('">( </option>
+<option value="'>'">) </option>
+<option value="'@'"> @ </option>
+<option value="'~'">~ </option>
+<option value="'/'">/</option>
+<option value="'{'">{</option>
+<option value="'}'"> }</option>
+<option value="'^'"> ^</option>
+<option value="'%'"> %</option>
+</select>
+
+<input type="text"  id="columnnames" />
+<select name="schema" id="schema1">
+<option value='Int'>Int </option>
+<option value='Long'>Long</option>
+<option value='Float'> Float </option>
+<option value='Double'>Double </option>
+<option value='Chararray'>Chararray</option>
+<option value='Bytearray'>Bytearray</option>
+</select>
+<p></p>
+<textarea   name="ta"></textarea>
+<p></p>
+
+<input type="button"  onclick="final_schema()"  value="Add">
+
+<button onclick="WriteToFile()">Click to save</button>  
+</form> 
+</body>
+</html>
